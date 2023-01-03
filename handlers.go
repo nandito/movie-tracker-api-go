@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -8,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func AddMovieHandler(w http.ResponseWriter, r *http.Request) {
+func AddMovieHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Parse the request body and bind it to a Movie struct
 	var movie Movie
 	if err := json.NewDecoder(r.Body).Decode(&movie); err != nil {
@@ -34,7 +35,7 @@ func AddMovieHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
-func ListMoviesHandler(w http.ResponseWriter, r *http.Request) {
+func ListMoviesHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get a list of movies from the database
 	movies, err := getMovies(db)
 	if err != nil {
@@ -52,7 +53,7 @@ func ListMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
-func UpdateMovieHandler(w http.ResponseWriter, r *http.Request) {
+func UpdateMovieHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get the movie ID from the URL parameters
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -69,13 +70,17 @@ func UpdateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the movie in the database
-	if err := updateMovie(db, movie); err != nil {
+	if err := updateMovie(db, id, movie); err != nil {
+        if err.Error() == "Movie not found" {
+			http.Error(w, "Movie not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Error updating movie", http.StatusInternalServerError)
 		return
 	}
 }
 
-func DeleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+func DeleteMovieHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get the movie ID from the URL parameters
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -86,6 +91,10 @@ func DeleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Delete the movie from the database
 	if err := deleteMovie(db, id); err != nil {
+        if err.Error() == "Movie not found" {
+			http.Error(w, "Movie not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Error deleting movie", http.StatusInternalServerError)
 		return
 	}

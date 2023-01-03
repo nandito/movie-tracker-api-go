@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+    "fmt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -67,7 +68,14 @@ func getMovies(db *sql.DB) ([]Movie, error) {
     return movies, nil
 }
 
-func updateMovie(db *sql.DB, movie Movie) error {
+func updateMovie(db *sql.DB, id int, movie Movie) error {
+    err := db.QueryRow("SELECT id FROM movies WHERE id=?", id).Scan(&id)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("Movie not found")
+	}
+	if err != nil {
+		return err
+	}
     // Prepare the UPDATE statement
     stmt, err := db.Prepare("UPDATE movies SET title = ?, year = ?, watched = ? WHERE id = ?")
     if err != nil {
@@ -76,7 +84,7 @@ func updateMovie(db *sql.DB, movie Movie) error {
     defer stmt.Close()
 
     // Execute the statement
-    _, err = stmt.Exec(movie.Title, movie.Year, movie.Watched, movie.ID)
+    _, err = stmt.Exec(movie.Title, movie.Year, movie.Watched, id)
     if err != nil {
         return err
     }
@@ -85,6 +93,13 @@ func updateMovie(db *sql.DB, movie Movie) error {
 }
 
 func deleteMovie(db *sql.DB, id int) error {
+    err := db.QueryRow("SELECT id FROM movies WHERE id=?", id).Scan(&id)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("Movie not found")
+	}
+	if err != nil {
+		return err
+	}
     // Prepare the DELETE statement
     stmt, err := db.Prepare("DELETE FROM movies WHERE id = ?")
     if err != nil {

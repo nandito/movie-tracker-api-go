@@ -2,10 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
+    "time"
 	"log"
+    "net/http"
 
 	_ "github.com/mattn/go-sqlite3"
+    "github.com/gorilla/mux"
 )
 
 func main() {
@@ -27,5 +29,39 @@ func main() {
 	if _, err := db.Exec(query); err != nil {
 		log.Fatal(err)
 	}
+
+
+    router := mux.NewRouter()
+    
+    // Register the HTTP handlers
+    router.HandleFunc("/movies", func(w http.ResponseWriter, r *http.Request) {
+        switch r.Method {
+        case http.MethodPost:
+            AddMovieHandler(db, w, r)
+        case http.MethodGet:
+            ListMoviesHandler(db, w, r)
+        default:
+            http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        }
+    })
+    router.HandleFunc("/movies/{id}", func(w http.ResponseWriter, r *http.Request) {
+        switch r.Method {
+        case http.MethodPut:
+            UpdateMovieHandler(db, w, r)
+        case http.MethodDelete:
+            DeleteMovieHandler(db, w, r)
+        default:
+            http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        }
+    })
+
+    srv := &http.Server{
+        Handler:      router,
+        Addr:         "127.0.0.1:8080",
+        WriteTimeout: 15 * time.Second,
+        ReadTimeout:  15 * time.Second,
+    }
+
+    log.Fatal(srv.ListenAndServe())
 }
 
