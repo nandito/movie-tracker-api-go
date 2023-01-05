@@ -31,7 +31,49 @@ from the database.
 | PUT    | /movies/{id} | Updates a movie or TV show in the database |
 | DELETE | /movies/{id} | Deletes a movie or TV show from the database |
 
+## Testing
+
+To run the tests for this project, use the `go test` command from the project
+root directory:
+
+```sh
+go test
+```
+
+The tests can be found in the `*_test.go` files located in the project root
+directory.
+
+To run a specific test or a group of tests, you can use the `-run` flag with
+the `go test` command and specify a regular expression to match the names of
+the tests:
+
+```sh
+go test -run TestAddMovieHandler
+```
+
+To enable verbose output, including the output of the tests, you can use the
+`-v` flag:
+
+```sh
+go test -v
+```
+
+To generate a coverage report, you can use the `-cover` flag and specify the
+output file with the `-coverprofile` flag:
+
+```sh
+go test -cover -coverprofile=coverage.out
+```
+
+To view the coverage report, you can use the `go tool cover` command and
+specify the output file:
+
+```sh
+go tool cover -html=coverage.out
+```
+
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE)
+file for details.
 
