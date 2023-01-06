@@ -54,3 +54,53 @@ func TestAddMovieHandler(t *testing.T) {
 	}
 }
 
+func TestListMoviesHandler(t *testing.T) {
+	// Create a mock database
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	// Expect a single SELECT statement to be executed
+	rows := sqlmock.NewRows([]string{"id", "title", "year", "watched"}).
+		AddRow(1, "Movie 1", 2020, 120).
+		AddRow(2, "Movie 2", 2021, 90)
+	mock.ExpectPrepare("SELECT id, title, year, watched FROM movies").ExpectQuery().WillReturnRows(rows)
+
+	// Create a request to pass to the handler
+	req, err := http.NewRequest("GET", "/movies", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a ResponseRecorder to record the response
+	rr := httptest.NewRecorder()
+	handler := ListMoviesHandler
+
+	// Call the handler with the request, the ResponseRecorder, and the mock database
+	defer func() {
+		if r := recover(); r != nil {
+			debug.PrintStack()
+			t.Errorf("handler panicked: %v", r)
+		}
+	}()
+	handler(db, rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Check the response body
+	expected := `[{"id":1,"title":"Movie 1","year":2020,"watched":120},{"id":2,"title":"Movie 2","year":2021,"watched":90}]`
+	if rr.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
+	}
+
+	// Ensure that all expected database queries were executed
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
