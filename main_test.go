@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+    "github.com/gorilla/mux"
 )
 
 func TestAddMovieHandler(t *testing.T) {
@@ -104,3 +105,59 @@ func TestListMoviesHandler(t *testing.T) {
 	}
 }
 
+func TestUpdateMovieHandler(t *testing.T) {
+	// Create a mock database
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	// Expect a single SELECT statement to be executed
+	rows := sqlmock.NewRows([]string{"id"}).
+		AddRow(1)
+	mock.ExpectQuery("SELECT id FROM movies WHERE id=?").WithArgs(1).WillReturnRows(rows)
+
+	// Expect a single UPDATE statement to be executed
+	mock.ExpectPrepare("UPDATE movies SET").ExpectExec().WithArgs("Updated Movie", 2021, 0, 1).WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Create a request body
+	body := []byte(`{"title":"Updated Movie","year":2021,"watched":0}`)
+
+	// Create a request to pass to the handler
+	req, _ := http.NewRequest("PUT", "/movies/1", bytes.NewReader(body))
+
+    //Hack to try to fake gorilla/mux vars
+    vars := map[string]string{
+        "id": "1",
+    }
+    req = mux.SetURLVars(req, vars)
+
+	// Create a ResponseRecorder to record the response
+	rr := httptest.NewRecorder()
+	handler := UpdateMovieHandler
+
+	// Call the handler with the request, the ResponseRecorder, and the mock database
+	defer func() {
+		if r := recover(); r != nil {
+			debug.PrintStack()
+			t.Errorf("handler panicked: %v", r)
+		}
+	}()
+	handler(db, rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Check the response body
+	if rr.Body.String() != "" {
+		t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), "")
+	}
+
+	// Ensure that all expected database queries were executed
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
